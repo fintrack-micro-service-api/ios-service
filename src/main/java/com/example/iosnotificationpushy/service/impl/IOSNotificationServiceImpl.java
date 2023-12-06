@@ -15,11 +15,14 @@ import com.turo.pushy.apns.util.ApnsPayloadBuilder;
 import com.turo.pushy.apns.util.SimpleApnsPushNotification;
 import com.turo.pushy.apns.util.concurrent.PushNotificationFuture;
 import lombok.AllArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
@@ -32,31 +35,46 @@ public class IOSNotificationServiceImpl implements IOSNotificationService {
     private final DeviceTokenRepository deviceTokenRepository;
 
     @Override
-    public String pushIOSNotification(IOSNotificationRequest iosNotificationRequest, UUID userId) throws IOException, NoSuchAlgorithmException, InvalidKeyException, ExecutionException, InterruptedException {
-        String host = "api.sandbox.push.apple.com";
-        String keyID = "SU6U32YB7V";
-        String teamID = "62EMNW6G6D";
-        String bundleID = "com.kshrd.PushNotificationUsingAPNs";
-        String deviceToken = getDeviceToken(userId).getDeviceToken();
-        ApnsClient APNS_CLIENT = new ApnsClientBuilder().setApnsServer(host).setSigningKey(
-                        ApnsSigningKey.loadFromInputStream(new FileInputStream("/Users/macbookpro/Documents/Advance_Course/FinTrack/API/ios-notification-pushy/src/main/resources/key/AuthKey_SU6U32YB7V.p8"), teamID, keyID))
-                .build();
-        ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
-        payloadBuilder.setAlertBody(iosNotificationRequest.getTitle());
-        payloadBuilder.setAlertTitle(iosNotificationRequest.getBody());
-        payloadBuilder.setSound("bingbong.aiff");
+    public String pushIOSNotification(IOSNotificationRequest iosNotificationRequest, UUID userId) {
+        try {
+            String host = "api.sandbox.push.apple.com";
+            String keyID = "SU6U32YB7V";
+            String teamID = "62EMNW6G6D";
+            String bundleID = "com.kshrd.PushNotificationUsingAPNs";
+            String deviceToken = getDeviceToken(userId).getDeviceToken();
+            String filePath = "AuthKey_SU6U32YB7V.p8";
+            try (InputStream inputStream = new ClassPathResource(filePath).getInputStream()) {
+                ApnsClient APNS_CLIENT = new ApnsClientBuilder()
+                        .setApnsServer(host)
+                        .setSigningKey(ApnsSigningKey.loadFromInputStream(inputStream, teamID, keyID))
+                        .build();
 
-        String payload = payloadBuilder.buildWithDefaultMaximumLength();
+                ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
+                payloadBuilder.setAlertBody(iosNotificationRequest.getTitle());
+                payloadBuilder.setAlertTitle(iosNotificationRequest.getBody());
+                payloadBuilder.setSound("bingbong.aiff");
 
-        SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(deviceToken, bundleID, payload);
+                String payload = payloadBuilder.buildWithDefaultMaximumLength();
 
-        PushNotificationFuture<SimpleApnsPushNotification, PushNotificationResponse<SimpleApnsPushNotification>> sendNotificationFuture = APNS_CLIENT.sendNotification(pushNotification);
-        PushNotificationResponse<SimpleApnsPushNotification> pushNotificationResponse = sendNotificationFuture.get();
-        if (!pushNotificationResponse.isAccepted()) {
-            System.err.println("Notification rejected by the APNs gateway: " + pushNotificationResponse.getRejectionReason());
+                SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(deviceToken, bundleID, payload);
+
+                PushNotificationFuture<SimpleApnsPushNotification, PushNotificationResponse<SimpleApnsPushNotification>> sendNotificationFuture = APNS_CLIENT.sendNotification(pushNotification);
+                PushNotificationResponse<SimpleApnsPushNotification> pushNotificationResponse = sendNotificationFuture.get();
+
+                if (!pushNotificationResponse.isAccepted()) {
+                    // Log the rejection reason instead of printing to System.err
+//                    log.error("Notification rejected by the APNs gateway: {}", pushNotificationResponse.getRejectionReason());
+                }
+
+                return "Successful";
+            }
+        } catch (IOException | NoSuchAlgorithmException | InvalidKeyException | ExecutionException | InterruptedException e) {
+            // Handle or log the exception appropriately
+//            log.error("Error sending iOS notification", e);
+            return "Failed";
         }
-        return "Successful";
     }
+
 
     @Override
     public String saveDeviceToken(DeviceTokenRequest deviceToken) {
