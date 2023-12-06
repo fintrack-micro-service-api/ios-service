@@ -61,7 +61,6 @@ public class IOSNotificationServiceImpl implements IOSNotificationService {
     @Override
     public String saveDeviceToken(DeviceTokenRequest deviceToken) {
         deviceTokenRepository.save(deviceToken.toEntity());
-        System.out.println("");
         return "Successful";
     }
 
