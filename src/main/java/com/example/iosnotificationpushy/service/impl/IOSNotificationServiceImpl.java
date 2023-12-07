@@ -43,6 +43,7 @@ public class IOSNotificationServiceImpl implements IOSNotificationService {
             String bundleID = "com.kshrd.PushNotificationUsingAPNs";
             String deviceToken = getDeviceToken(userId).getDeviceToken();
             String filePath = "AuthKey_SU6U32YB7V.p8";
+            System.out.println("");
             try (InputStream inputStream = new ClassPathResource(filePath).getInputStream()) {
                 ApnsClient APNS_CLIENT = new ApnsClientBuilder()
                         .setApnsServer(host)
